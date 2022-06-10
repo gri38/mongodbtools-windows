@@ -1,0 +1,43 @@
+name: package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          python -m pip install twine
+
+      - name: Get git tag
+        id: tag
+        uses: little-core-labs/get-git-tag@v3.0.2
+        with:
+          tagRegex: v(.*) 
+
+      - name: package publish
+        run: |
+          sed -i "s/VERSION_PLACEHOLDER/${{ steps.tag.outputs.tag }}/g" setup.cfg
+          echo "Version in setup.cfg:"
+          grep "version" setup.cfg
+          python -m build
+          twine upload dist/* -u __token__ -p ${{ secrets.PYPI_PWD }}
